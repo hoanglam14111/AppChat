@@ -50,3 +50,8 @@ class Program
 			catch { break; }
 		}
 	}
+	static void HandleClient(TcpClient tcp)
+	{
+		NetworkStream ns = tcp.GetStream();
+		var reader = new BinaryReader(ns, Encoding.UTF8, leaveOpen: true);
+		var writer = new BinaryWriter(ns, Encoding.UTF8, leaveOpen: true);
