@@ -89,4 +89,34 @@ class Program
 				}
 			}
 		}
+		catch (Exception ex)
+		{
+			Console.WriteLine("Loi ket noi: " + ex.Message);
+		}
+		finally
+		{
+			try { writer?.Close(); reader?.Close(); tcp?.Close(); } catch { }
+		}
+	}
+
+	static void ListenLoop()
+	{
+		try
+		{
+			while (running && tcp.Connected)
+			{
+				string header = ReadHeader();
+				if (string.IsNullOrEmpty(header)) break;
+				var parts = header.Split('|');
+				var type = parts[0];
+				if (type == "MSG")
+				{
+					if (parts.Length >= 4 && parts[2] == "USERS")
+					{
+						Console.WriteLine($"[Server] Online: {parts[3]}");
+					}
+					else
+					{
+						var sender = parts.Length >= 2 ? parts[1] : "unknown";
+						var text = parts.Length >= 3 ? parts[2] : "";
 
