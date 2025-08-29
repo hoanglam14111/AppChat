@@ -120,3 +120,35 @@ class Program
 						var sender = parts.Length >= 2 ? parts[1] : "unknown";
 						var text = parts.Length >= 3 ? parts[2] : "";
 
+						Console.WriteLine($"[{sender}] {text}");
+					}
+				}
+				else if (type == "PM")
+				{
+					var sender = parts.Length >= 2 ? parts[1] : "unknown";
+					var text = parts.Length >= 4 ? parts[3] : "";
+					Console.WriteLine($"[Rieng tu {sender}] {text}");
+				}
+				else if (type == "FILE")
+				{
+					var sender = parts.Length >= 2 ? parts[1] : "unknown";
+					var filename = parts.Length >= 4 ? parts[3] : "file.bin";
+					var filesize = parts.Length >= 5 ? long.Parse(parts[4]) : 0L;
+
+					byte[] bytes = ReadBytesExact(filesize);
+					string saveName = $"{DateTime.Now:yyyyMMddHHmmss}_{filename}";
+					File.WriteAllBytes(saveName, bytes);
+					Console.WriteLine($"[FILE] Nhan file tu {sender} -> luu: {saveName} ({filesize} bytes)");
+				}
+			}
+		}
+		catch (IOException)
+		{
+			Console.WriteLine("Mat ket noi den server.");
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine("Loi listen: " + ex.Message);
+		}
+		running = false;
+	}
