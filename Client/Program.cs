@@ -152,3 +152,19 @@ class Program
 		}
 		running = false;
 	}
+	static void SendHeader(string header)
+	{
+		var b = Encoding.UTF8.GetBytes(header);
+		writer.Write(b.Length);
+		writer.Write(b);
+		writer.Flush();
+	}
+
+	static string ReadHeader()
+	{
+		int len;
+		try { len = reader.ReadInt32(); } catch { return ""; }
+		if (len <= 0) return "";
+		var b = reader.ReadBytes(len);
+		return Encoding.UTF8.GetString(b);
+	}
