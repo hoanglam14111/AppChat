@@ -168,3 +168,15 @@ class Program
 		var b = reader.ReadBytes(len);
 		return Encoding.UTF8.GetString(b);
 	}
+	static byte[] ReadBytesExact(long count)
+	{
+		byte[] buffer = new byte[count];
+		int offset = 0;
+		while (offset < count)
+		{
+			int read = reader.BaseStream.Read(buffer, offset, (int)Math.Min(8192, count - offset));
+			if (read <= 0) throw new IOException("Unexpected end of stream while reading file bytes.");
+			offset += read;
+		}
+		return buffer;
+	}
