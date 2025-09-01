@@ -180,3 +180,14 @@ class Program
 		}
 		return buffer;
 	}
+	static void SendFile(string path, string target)
+	{
+		var fileBytes = File.ReadAllBytes(path);
+		var filename = Path.GetFileName(path);
+		long filesize = fileBytes.LongLength;
+		SendHeader($"FILE|{username}|{target}|{filename}|{filesize}");
+		writer.BaseStream.Write(fileBytes, 0, fileBytes.Length);
+		writer.Flush();
+		Console.WriteLine($"[FILE] Da gui file {filename} ({filesize} bytes) toi {target}");
+	}
+}
