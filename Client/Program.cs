@@ -3,6 +3,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.IO;
+using System.Collections.Generic;
 
 class Program
 {
@@ -12,6 +13,25 @@ class Program
 	static string username;
 	static bool running = true;
 	static string pmTarget = null;
+
+	// Bảng màu cho user
+	static Dictionary<string, ConsoleColor> userColors = new Dictionary<string, ConsoleColor>();
+	static ConsoleColor[] colorPool = new ConsoleColor[]
+	{
+		ConsoleColor.Cyan, ConsoleColor.Green, ConsoleColor.Yellow,
+		ConsoleColor.Magenta, ConsoleColor.Blue, ConsoleColor.White
+	};
+	static int colorIndex = 0;
+
+	static ConsoleColor GetUserColor(string user)
+	{
+		if (!userColors.ContainsKey(user))
+		{
+			userColors[user] = colorPool[colorIndex % colorPool.Length];
+			colorIndex++;
+		}
+		return userColors[user];
+	}
 
 	static void Main(string[] args)
 	{
@@ -37,32 +57,37 @@ class Program
 			Thread listenThread = new Thread(ListenLoop) { IsBackground = true };
 			listenThread.Start();
 
-			Console.WriteLine("Commands: users  pm <user> <msg>  exitpm  file <path> [target]  exit");
+			Console.WriteLine("Danh sach lenh:");
+			Console.WriteLine("  /pm <user> <msg>      - Gui tin nhan rieng");
+			Console.WriteLine("  /exitpm               - Thoat che do nhan rieng");
+			Console.WriteLine("  /file <path> <user>   - Gui file");
+			Console.WriteLine("  /exit                 - Thoat ung dung");
+
 
 			while (running)
 			{
 				string line = Console.ReadLine();
 				if (string.IsNullOrEmpty(line)) continue;
 
-				if (line.StartsWith("users"))
+				if (line.StartsWith("/users"))
 				{
 					SendHeader($"CMD|{username}|LIST");
 				}
-				else if (line.StartsWith("pm "))
+				else if (line.StartsWith("/pm "))
 				{
 					var sp = line.Split(' ', 3);
-					if (sp.Length < 3) { Console.WriteLine("Dung: pm <user> <message>"); continue; }
+					if (sp.Length < 3) { Console.WriteLine("Dung: /pm <user> <message>"); continue; }
 					pmTarget = sp[1];
 					var msg = sp[2];
 					SendHeader($"PM|{username}|{pmTarget}|{msg}");
-					Console.WriteLine($"[Che do rieng] Ban dang chat voi {pmTarget}. Go exitpm de quay lai chat chung.");
+					Console.WriteLine($"[Che do rieng] Ban dang chat voi {pmTarget}. Go /exitpm de quay lai chat chung.");
 				}
-				else if (line == "exitpm")
+				else if (line == "/exitpm")
 				{
 					pmTarget = null;
 					Console.WriteLine("Da thoat che do rieng. Dang o chat chung.");
 				}
-				else if (line.StartsWith("file "))
+				else if (line.StartsWith("/file "))
 				{
 					var sp = line.Split(' ', 3);
 					var path = sp.Length >= 2 ? sp[1].Trim('"') : null;
@@ -70,7 +95,7 @@ class Program
 					if (string.IsNullOrEmpty(path) || !File.Exists(path)) { Console.WriteLine("File khong ton tai."); continue; }
 					SendFile(path, target);
 				}
-				else if (line == "exit")
+				else if (line == "/exit")
 				{
 					SendHeader($"EXIT|{username}");
 					running = false;
@@ -88,6 +113,7 @@ class Program
 					}
 				}
 			}
+
 		}
 		catch (Exception ex)
 		{
@@ -119,15 +145,31 @@ class Program
 					{
 						var sender = parts.Length >= 2 ? parts[1] : "unknown";
 						var text = parts.Length >= 3 ? parts[2] : "";
+						var timestamp = parts.Length >= 4 ? parts[3] : "";
 
-						Console.WriteLine($"[{sender}] {text}");
+						// In timestamp trước
+						Console.Write($"[{timestamp}] ");
+
+						// In tên user với màu riêng
+						Console.ForegroundColor = GetUserColor(sender);
+						Console.Write(sender);
+						Console.ResetColor();
+
+						// In nội dung tin nhắn màu trắng
+						Console.WriteLine($": {text}");
 					}
 				}
 				else if (type == "PM")
 				{
 					var sender = parts.Length >= 2 ? parts[1] : "unknown";
 					var text = parts.Length >= 4 ? parts[3] : "";
-					Console.WriteLine($"[Rieng tu {sender}] {text}");
+					var timestamp = parts.Length >= 5 ? parts[4] : "";
+
+					Console.Write($"(PM) [{timestamp}] ");
+					Console.ForegroundColor = GetUserColor(sender);
+					Console.Write(sender);
+					Console.ResetColor();
+					Console.WriteLine($": {text}");
 				}
 				else if (type == "FILE")
 				{
@@ -152,6 +194,7 @@ class Program
 		}
 		running = false;
 	}
+
 	static void SendHeader(string header)
 	{
 		var b = Encoding.UTF8.GetBytes(header);
@@ -168,6 +211,7 @@ class Program
 		var b = reader.ReadBytes(len);
 		return Encoding.UTF8.GetString(b);
 	}
+
 	static byte[] ReadBytesExact(long count)
 	{
 		byte[] buffer = new byte[count];
@@ -180,6 +224,7 @@ class Program
 		}
 		return buffer;
 	}
+
 	static void SendFile(string path, string target)
 	{
 		var fileBytes = File.ReadAllBytes(path);
@@ -191,3 +236,5 @@ class Program
 		Console.WriteLine($"[FILE] Da gui file {filename} ({filesize} bytes) toi {target}");
 	}
 }
+
+
