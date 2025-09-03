@@ -317,4 +317,12 @@ class ChatServer
         byte[] buffer = new byte[count];
         int offset = 0;
 
-        
+        while (offset < count)
+        {
+            int read = reader.BaseStream.Read(buffer, offset, (int)Math.Min(8192, count - offset));
+            if (read <= 0) throw new IOException("Mất kết nối trong khi nhận file.");
+            offset += read;
+        }
+        return buffer;
+    }
+}
