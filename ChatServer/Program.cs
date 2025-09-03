@@ -5,6 +5,8 @@ using System.Text;
 using System.Threading;
 using System.Collections.Generic;
 using System.IO;
+using System.Security.Cryptography.X509Certificates;
+using System.Net.Security;
 
 class ClientInfo
 {
@@ -83,9 +85,11 @@ class ChatServer
 
     static void HandleClient(TcpClient tcp)
     {
-        var ns = tcp.GetStream();
-        var reader = new BinaryReader(ns, Encoding.UTF8, leaveOpen: true);
-        var writer = new BinaryWriter(ns, Encoding.UTF8, leaveOpen: true);
+        X509Certificate2 serverCert = X509CertificateLoader.LoadPkcs12FromFile("chatserver.pfx", "123456789");
+        var sslStream = new SslStream(tcp.GetStream(), false);
+        sslStream.AuthenticateAsServer(serverCert, clientCertificateRequired: false, checkCertificateRevocation: false);
+        var reader = new BinaryReader(sslStream, Encoding.UTF8, leaveOpen: true);
+        var writer = new BinaryWriter(sslStream, Encoding.UTF8, leaveOpen: true);
 
         string username = "";
 
