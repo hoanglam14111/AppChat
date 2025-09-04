@@ -265,35 +265,115 @@ class ClientChat
                         var sender = parts.Length >= 2 ? parts[1] : "unknown";
                         var text = parts.Length >= 3 ? parts[2] : "";
 
-						Console.WriteLine($"[{sender}] {text}");
-					}
-				}
-				else if (type == "PM")
-				{
-					var sender = parts.Length >= 2 ? parts[1] : "unknown";
-					var text = parts.Length >= 4 ? parts[3] : "";
-					Console.WriteLine($"[Rieng tu {sender}] {text}");
-				}
-				else if (type == "FILE")
-				{
-					var sender = parts.Length >= 2 ? parts[1] : "unknown";
-					var filename = parts.Length >= 4 ? parts[3] : "file.bin";
-					var filesize = parts.Length >= 5 ? long.Parse(parts[4]) : 0L;
+                        Console.ForegroundColor = GetColorForUser(sender);
+                        Console.Write($"[{sender}] ");
+                        Console.ResetColor();
+                        Console.WriteLine(text);
+                    }
+                }
+                else if (type == "PM")
+                {
+                    var sender = parts.Length >= 2 ? parts[1] : "unknown";
+                    var text = parts.Length >= 4 ? parts[3] : "";
 
-					byte[] bytes = ReadBytesExact(filesize);
-					string saveName = $"{DateTime.Now:yyyyMMddHHmmss}_{filename}";
-					File.WriteAllBytes(saveName, bytes);
-					Console.WriteLine($"[FILE] Nhan file tu {sender} -> luu: {saveName} ({filesize} bytes)");
-				}
-			}
-		}
-		catch (IOException)
-		{
-			Console.WriteLine("Mat ket noi den server.");
-		}
-		catch (Exception ex)
-		{
-			Console.WriteLine("Loi listen: " + ex.Message);
-		}
-		running = false;
-	}
+                    Console.ForegroundColor = ConsoleColor.Magenta;
+                    Console.Write("[Rieng tu ");
+                    Console.ForegroundColor = GetColorForUser(sender);
+                    Console.Write(sender);
+                    Console.ForegroundColor = ConsoleColor.Magenta;
+                    Console.Write("] ");
+                    Console.ResetColor();
+                    Console.WriteLine(text);
+                }
+                else if (type == "FILE")
+                {
+                    var sender = parts.Length >= 2 ? parts[1] : "unknown";
+                    var filename = parts.Length >= 4 ? parts[3] : "file.bin";
+                    var filesize = parts.Length >= 5 ? long.Parse(parts[4]) : 0L;
+
+                    byte[] bytes = ReadBytesExact(filesize);
+                    string baseName = Path.GetFileName(filename);
+                    string saveName = $"{DateTime.Now:yyyyMMdd_HHmmss}_{baseName}";
+                    File.WriteAllBytes(saveName, bytes);
+
+                    Console.ForegroundColor = ConsoleColor.Yellow;
+                    Console.WriteLine($"[FILE] Nhan file tu {sender} -> luu: {saveName} ({filesize} bytes)");
+                    Console.ResetColor();
+                }
+            }
+        }
+        catch (IOException)
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine("Mat ket noi den server.");
+            Console.ResetColor();
+        }
+    }
+
+    static ConsoleColor GetColorForUser(string user)
+    {
+        int hash = Math.Abs(user.GetHashCode());
+        ConsoleColor[] colors = new ConsoleColor[]
+        {
+            ConsoleColor.Cyan, ConsoleColor.Yellow, ConsoleColor.Green,
+            ConsoleColor.Magenta, ConsoleColor.Blue, ConsoleColor.DarkCyan,
+            ConsoleColor.DarkYellow, ConsoleColor.DarkGreen, ConsoleColor.DarkMagenta,
+            ConsoleColor.DarkBlue, ConsoleColor.White
+        };
+        return colors[hash % colors.Length];
+    }
+
+    static void SendHeader(string header)
+    {
+        if (writer == null) throw new InvalidOperationException("Writer is not initialized.");
+        var b = Encoding.UTF8.GetBytes(header);
+        writer.Write(b.Length);
+        writer.Write(b);
+        writer.Flush();
+    }
+
+    static string ReadHeader()
+    {
+        if (reader == null) return "";
+        int len;
+        try { len = reader.ReadInt32(); } catch { return ""; }
+        if (len <= 0) return "";
+        var b = reader.ReadBytes(len);
+        return Encoding.UTF8.GetString(b);
+    }
+
+    static byte[] ReadBytesExact(long count)
+    {
+        if (reader == null)
+            throw new InvalidOperationException("Reader is not initialized.");
+
+        byte[] buffer = new byte[count];
+        int offset = 0;
+        while (offset < count)
+        {
+            int read = reader.BaseStream.Read(buffer, offset, (int)Math.Min(8192, count - offset));
+            if (read <= 0) throw new IOException("Unexpected end of stream while reading file bytes.");
+            offset += read;
+        }
+        return buffer;
+    }
+
+    static void SendFile(string path, string target)
+    {
+        var fileBytes = File.ReadAllBytes(path);
+        var filename = Path.GetFileName(path);
+        long filesize = fileBytes.LongLength;
+
+        SendHeader($"FILE|{username}|{target}|{filename}|{filesize}");
+
+        if (writer == null)
+            throw new InvalidOperationException("Writer is not initialized.");
+
+        writer.BaseStream.Write(fileBytes, 0, fileBytes.Length);
+        writer.Flush();
+
+        Console.ForegroundColor = ConsoleColor.Yellow;
+        Console.WriteLine($"[FILE] Da gui file {filename} ({filesize} bytes) toi {target}");
+        Console.ResetColor();
+    }
+}
